@@ -1,0 +1,100 @@
+#ifndef __GH_HAL_IO_CONFIG_FOR_GR5526_H__
+#define __GH_HAL_IO_CONFIG_FOR_GR5526_H__
+
+#include "app_io.h"
+#include "app_gpiote.h"
+#include "app_rtc.h"
+// #if (GH_INTERFACE_TYPE == GH_INTERFACE_SPI_SW_CS || GH_INTERFACE_TYPE == GH_INTERFACE_SPI_HW_CS)
+#include "app_spi.h"
+#include "app_spi_dma.h"
+// #elif (GH_INTERFACE_TYPE == GH_INTERFACE_I2C)
+#include "app_i2c.h"
+#include "app_i2c_dma.h"
+// #endif
+
+#include "app_thread.h"
+ 
+#if defined(CHEALSE_A_SOFT_SPI) && (CHEALSE_A_SOFT_SPI == 1)
+#include "soft_spi.h"
+#endif
+
+
+
+#if (GH_SUPPORT_HARD_RESET)
+#define GH_RST_IO_TYPE APP_IO_TYPE_GPIOA
+#define GH_RST_PINMUX  APP_IO_MUX
+#define GH_RST_PIN     APP_IO_PIN_10
+#endif
+
+#if (GH_ISR_MODE == INTERRUPT_MODE)
+#define GH_INT_IO_TYPE APP_IO_TYPE_AON
+#define GH_INT_PINMUX  APP_IO_MUX
+#define GH_INT_PIN     APP_IO_PIN_0
+#endif
+
+// #if (GH_INTERFACE_TYPE == GH_INTERFACE_SPI_SW_CS || GH_INTERFACE_TYPE == GH_INTERFACE_SPI_HW_CS)
+
+#define GH_CS_IO_TYPE APP_IO_TYPE_GPIOA
+#if (GH_INTERFACE_TYPE == GH_INTERFACE_SPI_SW_CS)
+#define GH_CS_PINMUX  APP_IO_MUX
+#define GH_CS_PIN_ENABLE APP_SPI_PIN_DISABLE
+#else
+#define GH_CS_PINMUX  APP_IO_MUX_1
+#define GH_CS_PIN_ENABLE APP_SPI_PIN_ENABLE
+#endif
+#define GH_CS_PIN     APP_IO_PIN_7
+
+#define GH_CLK_IO_TYPE APP_IO_TYPE_GPIOA
+#define GH_CLK_PINMUX  APP_IO_MUX_1
+#define GH_CLK_PIN     APP_IO_PIN_4
+
+#define GH_MOSI_IO_TYPE APP_IO_TYPE_GPIOA
+#define GH_MOSI_PINMUX  APP_IO_MUX_1
+#define GH_MOSI_PIN     APP_IO_PIN_5
+
+#define GH_MISO_IO_TYPE APP_IO_TYPE_GPIOA
+#define GH_MISO_PINMUX  APP_IO_MUX_1
+#define GH_MISO_PIN     APP_IO_PIN_6
+
+#define SPI_CLOCK_PRESCALER             16u             /* The SPI CLOCK Freq = Peripheral CLK/SPI_CLOCK_PRESCALER */
+#define SPI_SOFT_CS_MODE_ENABLE         1u              /* suggest to enable SOFT CS MODE */
+#define SPI_SOFT_CS_MODE_DISABLE        0u              /* suggest to disable SOFT CS MODE */
+
+#define GH_DEFAULT_IO_CONFIG   \
+        { \
+            {GH_CS_IO_TYPE,   GH_CS_PINMUX,   GH_CS_PIN,   APP_IO_MODE_MUX, APP_IO_PULLUP, GH_CS_PIN_ENABLE}, \
+            {GH_CLK_IO_TYPE,  GH_CLK_PINMUX,  GH_CLK_PIN,  APP_IO_MODE_MUX, APP_IO_PULLUP, APP_SPI_PIN_ENABLE}, \
+            {GH_MOSI_IO_TYPE, GH_MOSI_PINMUX, GH_MOSI_PIN, APP_IO_MODE_MUX, APP_IO_PULLUP, APP_SPI_PIN_ENABLE}, \
+            {GH_MISO_IO_TYPE, GH_MISO_PINMUX, GH_MISO_PIN, APP_IO_MODE_MUX, APP_IO_PULLUP, APP_SPI_PIN_ENABLE}, \
+        }
+
+#define GH_DEFAULT_DMA_CONFIG   \
+        {DMA0, DMA0, DMA_Channel0, DMA_Channel1}
+        
+#define GH_DEFAULT_INIT_CONFIG   \
+        {SPI_DATASIZE_8BIT, SPI_POLARITY_LOW, SPI_PHASE_1EDGE, SPI_CLOCK_PRESCALER, SPI_TIMODE_DISABLE, SPI_SLAVE_SELECT_0}
+
+#define GH_DEFAULT_PARAM_CONFIG   \
+        {APP_SPI_ID_MASTER, GH_DEFAULT_IO_CONFIG, GH_DEFAULT_DMA_CONFIG, GH_DEFAULT_INIT_CONFIG, SPI_SOFT_CS_MODE_DISABLE}
+
+// #elif (GH_INTERFACE_TYPE == GH_INTERFACE_I2C)
+#define MASTER_DEV_ADDR	(0x38)
+#define GH_I2C_ID   APP_I2C_ID_4
+
+#define GH_SCL_PIN  APP_IO_PIN_4
+#define GH_SCL_PORT APP_IO_TYPE_GPIOA
+#define GH_SCL_MUX  APP_IO_MUX_0
+
+#define GH_SDA_PIN  APP_IO_PIN_5
+#define GH_SDA_PORT APP_IO_TYPE_GPIOA
+#define GH_SDA_MUX  APP_IO_MUX_0
+#define GH_DEFAULT_I2C_IO_CONFIG               { { GH_SCL_PORT, GH_SCL_MUX, GH_SCL_PIN, APP_IO_PULLUP }, \
+                                                 { GH_SDA_PORT, GH_SDA_MUX, GH_SDA_PIN, APP_IO_PULLUP } }
+#define GH_DEFAULT_I2C_MODE_CONFIG             { DMA0,DMA0, DMA_Channel2, DMA_Channel3 }
+#define GH_DEFAULT_I2C_CONFIG                  { I2C_SPEED_100K, MASTER_DEV_ADDR, I2C_ADDRESSINGMODE_7BIT, I2C_GENERALCALL_ENABLE}
+#define GH_DEFAULT_I2C_PARAM_CONFIG            { GH_I2C_ID, APP_I2C_ROLE_MASTER, GH_DEFAULT_I2C_IO_CONFIG, GH_DEFAULT_I2C_MODE_CONFIG, GH_DEFAULT_I2C_CONFIG}
+// #endif
+
+
+#endif // !__GH_HAL_IO_CONFIG_FOR_GR5526_H__
+

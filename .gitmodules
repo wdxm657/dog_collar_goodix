@@ -1,0 +1,18 @@
+[submodule "platform/gr5526_sdk"]
+	path = platform/gr5526_sdk
+	url = https://gitee.com/goodix-ble/GR5526.SDK.git
+[submodule "components/gh3036_sdk"]
+	path = components/gh3036_sdk
+	url = https://gitee.com/XiaoPb/gh3036_sdk.git
+[submodule "components/sensors"]
+	path = components/sensors
+	url = https://gitee.com/XiaoPb/sensors.git
+[submodule "components/os_adapter"]
+	path = components/os_adapter
+	url = https://gitee.com/XiaoPb/os_adapter.git
+[submodule "components/core_framework"]
+	path = components/core_framework
+	url = https://gitee.com/XiaoPb/core_framework.git
+[submodule "components/factory"]
+	path = components/factory
+	url = https://gitee.com/XiaoPb/factory.git

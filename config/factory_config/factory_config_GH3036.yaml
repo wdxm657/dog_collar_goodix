@@ -1,0 +1,54 @@
+# GH3036 产测卡控配置文件
+project: "GH3036"
+version: "1.0"
+description: "GH3036 产测卡控配置"
+
+global:
+  default_operator: "lt"
+  fail_action: "stop"
+
+tests:
+  base_noise:
+    enabled: true
+    description: "底噪测试"
+    unit: "uV"
+    global_threshold:
+      operator: "lt"
+      value: 95
+      description: "所有通道底噪应小于95 uV"
+
+  ppg_noise:
+    enabled: true
+    description: "PPG噪声测试"
+    unit: "uV"
+    global_threshold:
+      operator: "lt"
+      value: 280
+      description: "所有通道PPG噪声应小于280 uV"
+    # channel_rules:
+    #   - channels: [0, 1, 2]
+    #     operator: "lt"
+    #     value: 150
+    #     description: "通道0-2 PPG噪声应小于150 LSB"
+    #   - channels: [3]
+    #     operator: "range"
+    #     range: [50, 200]
+    #     description: "通道3 PPG噪声应在50-200 LSB范围"
+
+  lpctr:
+    enabled: true
+    description: "LPCTR测试"
+    unit: "nA/mA"
+    global_threshold:
+      operator: "range"
+      range: [100, 3000]
+      description: "所有通道LPCTR应在100-3000范围"
+
+  lplctr:
+    enabled: true
+    description: "LPLCTR测试"
+    unit: "nA/mA"
+    global_threshold:
+      operator: "range"
+      range: [0, 6]
+      description: "所有通道LPLCTR应在0-6范围"
