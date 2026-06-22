@@ -1,0 +1,10 @@
+name: chelsea_ble
+channels:
+  - defaults
+dependencies:
+  - python>=3.10
+  - pyqt>=5.15
+  - pip
+  - pip:
+    - bleak>=0.22.0
+    - qasync>=0.27
