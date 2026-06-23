@@ -58,6 +58,7 @@
 #include "app_thread.h"
 #include "hrs.h"
 #include "factory.h"
+#include "ble_log.h"
 
 #if GH_USER_LOG_EN
 #define DEBUG_LOG(...)                      GH_LOG_LVL_DEBUG(__VA_ARGS__)
@@ -336,6 +337,7 @@ uint32_t gh_demo_data_publish(gh_func_frame_t *p_frame)
 {
 #if (1 == GH_PROTOCOL_EN)
     if (is_connect()) {
+        ble_printf("gh_protocol_process");
         gh_protocol_process(p_frame);
     }
 #endif

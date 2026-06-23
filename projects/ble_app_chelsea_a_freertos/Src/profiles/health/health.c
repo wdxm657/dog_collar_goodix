@@ -51,6 +51,7 @@
 /**@brief The UUIDs of HEALTH characteristics. */
 #define HEALTH_SERVER_TX_UUID {0xFB, 0x34, 0x9B, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00}
 #define HEALTH_SERVER_RX_UUID {0xFB, 0x34, 0x9B, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00}
+#define HEALTH_SERVER_LOG_UUID {0xFB, 0x34, 0x9B, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00}
 
 /**@brief Macros for conversion of 128bit to 16bit UUID. */
 #define ATT_128_PRIMARY_SERVICE BLE_ATT_16_TO_128_ARRAY(BLE_ATT_DECL_PRIMARY_SERVICE)
@@ -65,13 +66,17 @@
 enum health_attr_idx_t
 {
     HEALTH_IDX_SVC,
-    
+
     HEALTH_IDX_TX_CHAR,
     HEALTH_IDX_TX_VAL,
     HEALTH_IDX_TX_CFG,
 
     HEALTH_IDX_RX_CHAR,
     HEALTH_IDX_RX_VAL,
+
+    HEALTH_IDX_LOG_CHAR,
+    HEALTH_IDX_LOG_VAL,
+    HEALTH_IDX_LOG_CFG,
 
     HEALTH_IDX_NB,
 };
@@ -86,6 +91,7 @@ struct health_env_t
     health_init_t              health_init;                               /**< Goodix UART Service initialization variables. */
     uint16_t                start_hdl;                              /**< Start handle of services */
     uint16_t                tx_ntf_cfg[HEALTH_CONNECTION_MAX];         /**< TX Characteristic Notification configuration of the peers. */
+    uint16_t                log_ntf_cfg[HEALTH_CONNECTION_MAX];        /**< LOG TX Characteristic Notification configuration of the peers. */
     uint16_t                flow_ctrl_ntf_cfg[HEALTH_CONNECTION_MAX];  /**< Flow Control Characteristic Notification configuration of the peers. */
     ble_gatts_create_db_t   health_gatts_db;                          /**< Goodix UART Service attributs database. */
 };
@@ -124,6 +130,19 @@ static const ble_gatts_attm_desc_128_t health_attr_tab[HEALTH_IDX_NB] =
                                 BLE_GATTS_WRITE_REQ_PERM_UNSEC | BLE_GATTS_WRITE_CMD_PERM_UNSEC,
                                 (BLE_GATTS_ATT_VAL_LOC_USER | BLE_GATTS_ATT_UUID_TYPE_SET(BLE_GATTS_UUID_TYPE_128)),
                                 HEALTH_MAX_DATA_LEN},
+
+    // HEALTH LOG TX Characteristic Declaration
+    [HEALTH_IDX_LOG_CHAR]       = {ATT_128_CHARACTERISTIC, BLE_GATTS_READ_PERM_UNSEC, 0, 0},
+    // HEALTH LOG TX Characteristic Value
+    [HEALTH_IDX_LOG_VAL]        = {HEALTH_SERVER_LOG_UUID,
+                                BLE_GATTS_NOTIFY_PERM_UNSEC,
+                                (BLE_GATTS_ATT_VAL_LOC_USER | BLE_GATTS_ATT_UUID_TYPE_SET(BLE_GATTS_UUID_TYPE_128)),
+                                HEALTH_MAX_DATA_LEN},
+    // HEALTH LOG TX Characteristic - Client Characteristic Configuration Descriptor
+    [HEALTH_IDX_LOG_CFG]        = {ATT_128_CLIENT_CHAR_CFG,
+                                BLE_GATTS_READ_PERM_UNSEC | BLE_GATTS_WRITE_REQ_PERM_UNSEC,
+                                0,
+                                0},
 };
 
 /*
@@ -153,6 +172,12 @@ static void health_read_att_evt_handler(uint8_t conn_idx, const ble_gatts_evt_re
         case HEALTH_IDX_TX_CFG:
             cfm.length = sizeof(uint16_t);
             cfm.value  = (uint8_t *)&s_health_env.tx_ntf_cfg[conn_idx];
+            cfm.status = BLE_SUCCESS;
+            break;
+
+        case HEALTH_IDX_LOG_CFG:
+            cfm.length = sizeof(uint16_t);
+            cfm.value  = (uint8_t *)&s_health_env.log_ntf_cfg[conn_idx];
             cfm.status = BLE_SUCCESS;
             break;
 
@@ -200,6 +225,12 @@ static void health_write_att_evt_handler(uint8_t conn_idx, const ble_gatts_evt_w
             s_health_env.tx_ntf_cfg[conn_idx] = cccd_value;
             break;
 
+        case HEALTH_IDX_LOG_CFG:
+            cccd_value     = le16toh(&p_param->value[0]);
+            s_health_env.log_ntf_cfg[conn_idx] = cccd_value;
+            cfm.status = BLE_SUCCESS;
+            break;
+
         default:
             cfm.status = BLE_ATT_ERR_INVALID_HANDLE;
             break;
@@ -241,6 +272,10 @@ static void health_cccd_set_evt_handler(uint8_t conn_idx, uint16_t handle, uint1
         case HEALTH_IDX_TX_CFG:
             event.evt_type = (PRF_CLI_START_NTF == cccd_value) ? HEALTH_EVT_TX_PORT_OPENED : HEALTH_EVT_TX_PORT_CLOSED;
             s_health_env.tx_ntf_cfg[conn_idx] = cccd_value;
+            break;
+
+        case HEALTH_IDX_LOG_CFG:
+            s_health_env.log_ntf_cfg[conn_idx] = cccd_value;
             break;
 
         default:
@@ -308,6 +343,23 @@ static void health_ble_evt_handler(const ble_evt_t *p_evt)
  * GLOBAL FUNCTION DEFINITIONS
  *****************************************************************************************
  */
+sdk_err_t health_log_data_send(uint8_t conn_idx, uint8_t *p_data, uint16_t length)
+{
+    sdk_err_t            error_code = SDK_ERR_NTF_DISABLED;
+    ble_gatts_noti_ind_t send_cmd;
+
+    if (PRF_CLI_START_NTF == s_health_env.log_ntf_cfg[conn_idx])
+    {
+        send_cmd.type   = BLE_GATT_NOTIFICATION;
+        send_cmd.handle = prf_find_handle_by_idx(HEALTH_IDX_LOG_VAL, s_health_env.start_hdl, (uint8_t *)&s_char_mask);
+        send_cmd.length = length;
+        send_cmd.value  = p_data;
+        error_code = ble_gatts_noti_ind(conn_idx, &send_cmd);
+    }
+
+    return error_code;
+}
+
 sdk_err_t health_tx_data_send(uint8_t conn_idx, uint8_t *p_data, uint16_t length)
 {
     sdk_err_t            error_code = SDK_ERR_NTF_DISABLED;

@@ -1404,7 +1404,7 @@
 
   <Group>
     <GroupName>user_platform</GroupName>
-    <tvExp>0</tvExp>
+    <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
@@ -1412,7 +1412,7 @@
       <GroupNumber>10</GroupNumber>
       <FileNumber>52</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\Src\platform\user_periph_setup.c</PathWithFileName>
@@ -3024,7 +3024,7 @@
 
   <Group>
     <GroupName>chelsea/user</GroupName>
-    <tvExp>0</tvExp>
+    <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
@@ -3152,7 +3152,7 @@
 
   <Group>
     <GroupName>app/thread</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
@@ -3597,6 +3597,38 @@
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\..\components\factory\src\utils\factory_noise.c</PathWithFileName>
       <FilenameWithoutPath>factory_noise.c</FilenameWithoutPath>
+      <RteFlg>0</RteFlg>
+      <bShared>0</bShared>
+    </File>
+  </Group>
+
+  <Group>
+    <GroupName>ble_log</GroupName>
+    <tvExp>0</tvExp>
+    <tvExpOptDlg>0</tvExpOptDlg>
+    <cbSel>0</cbSel>
+    <RteFlg>0</RteFlg>
+    <File>
+      <GroupNumber>27</GroupNumber>
+      <FileNumber>224</FileNumber>
+      <FileType>1</FileType>
+      <tvExp>0</tvExp>
+      <tvExpOptDlg>0</tvExpOptDlg>
+      <bDave2>0</bDave2>
+      <PathWithFileName>..\Src\user\ble_log.c</PathWithFileName>
+      <FilenameWithoutPath>ble_log.c</FilenameWithoutPath>
+      <RteFlg>0</RteFlg>
+      <bShared>0</bShared>
+    </File>
+    <File>
+      <GroupNumber>27</GroupNumber>
+      <FileNumber>225</FileNumber>
+      <FileType>5</FileType>
+      <tvExp>0</tvExp>
+      <tvExpOptDlg>0</tvExpOptDlg>
+      <bDave2>0</bDave2>
+      <PathWithFileName>..\Src\user\ble_log.h</PathWithFileName>
+      <FilenameWithoutPath>ble_log.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

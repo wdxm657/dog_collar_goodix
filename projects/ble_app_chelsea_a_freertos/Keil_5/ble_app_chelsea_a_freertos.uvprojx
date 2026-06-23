@@ -1935,6 +1935,21 @@
             </File>
           </Files>
         </Group>
+        <Group>
+          <GroupName>ble_log</GroupName>
+          <Files>
+            <File>
+              <FileName>ble_log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\user\ble_log.c</FilePath>
+            </File>
+            <File>
+              <FileName>ble_log.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Src\user\ble_log.h</FilePath>
+            </File>
+          </Files>
+        </Group>
       </Groups>
     </Target>
     <Target>
@@ -3761,6 +3776,21 @@
               <FileName>factory_noise.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\components\factory\src\utils\factory_noise.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>ble_log</GroupName>
+          <Files>
+            <File>
+              <FileName>ble_log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\user\ble_log.c</FilePath>
+            </File>
+            <File>
+              <FileName>ble_log.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Src\user\ble_log.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -5593,6 +5623,21 @@
             </File>
           </Files>
         </Group>
+        <Group>
+          <GroupName>ble_log</GroupName>
+          <Files>
+            <File>
+              <FileName>ble_log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\user\ble_log.c</FilePath>
+            </File>
+            <File>
+              <FileName>ble_log.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Src\user\ble_log.h</FilePath>
+            </File>
+          </Files>
+        </Group>
       </Groups>
     </Target>
     <Target>
@@ -7419,6 +7464,21 @@
               <FileName>factory_noise.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\components\factory\src\utils\factory_noise.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>ble_log</GroupName>
+          <Files>
+            <File>
+              <FileName>ble_log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\user\ble_log.c</FilePath>
+            </File>
+            <File>
+              <FileName>ble_log.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Src\user\ble_log.h</FilePath>
             </File>
           </Files>
         </Group>

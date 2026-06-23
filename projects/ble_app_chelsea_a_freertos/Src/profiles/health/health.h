@@ -162,6 +162,8 @@ sdk_err_t health_service_init(health_init_t *p_health_init);
  */
 sdk_err_t health_tx_data_send(uint8_t conn_idx, uint8_t *p_data, uint16_t length);
 
+sdk_err_t health_log_data_send(uint8_t conn_idx, uint8_t *p_data, uint16_t length);
+
 /**
  *****************************************************************************************
  * @brief Provide the interface for other modules to obtain the health service start handle .
