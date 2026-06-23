@@ -35,4 +35,7 @@ void gh_app_demo_int_process(void);
 
 void gh_app_demo_read_efuse(uint64_t efuse_256bit[4]);
 
+/* 自动佩戴检测事件: 0=无事件, 1=wear_on, 2=wear_off */
+extern volatile uint32_t g_adt_wear_event;
+
 #endif /* GH_DEMO_H */

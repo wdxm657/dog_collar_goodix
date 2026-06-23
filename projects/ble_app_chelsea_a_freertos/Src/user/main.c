@@ -137,6 +137,43 @@ static void log_store_dump_task(void *p_arg)
 
 extern uint64_t bsp_timestamp_get(void);
 
+#include "gh_demo.h"
+#include "ble_log.h"
+
+/*
+ * ADT 佩戴监控任务: 检测到戴上自动开启 HR+HRV, 摘下自动关闭
+ */
+#define ADT_MONITOR_STACK_SIZE 256
+
+static void adt_wear_monitor_task(void *p_arg)
+{
+    uint32_t prev_event = 0;
+    uint8_t hr_hrv_active = 0;
+
+    while (1)
+    {
+        uint32_t evt = g_adt_wear_event;
+
+        if (evt != prev_event)
+        {
+            if (evt == 1 && hr_hrv_active == 0)   /* wear_on → 开启 HR+HRV */
+            {
+                ble_printf("[ADT] wear_on -> start HR+HRV\n");
+                health_start_event_send(HEALTH_MODE_HR | HEALTH_MODE_HRV, false);
+                hr_hrv_active = 1;
+            }
+            else if (evt == 2 && hr_hrv_active == 1)  /* wear_off → 关闭 HR+HRV */
+            {
+                ble_printf("[ADT] wear_off -> stop HR+HRV\n");
+                health_stop_event_send(HEALTH_MODE_HR | HEALTH_MODE_HRV, false);
+                hr_hrv_active = 0;
+            }
+            prev_event = evt;
+        }
+        vTaskDelay(pdMS_TO_TICKS(200));  /* 200ms 轮询一次 */
+    }
+}
+
 static void app_apply_rtc_tick_period(uint32_t tick_ms)
 {
     s_app_rtc_tick_period_ms = tick_ms;
@@ -206,6 +243,7 @@ static void vStartTasks(void *arg)
 #if APP_LOG_STORE_ENABLE
     xTaskCreate(log_store_dump_task, "log_store_dump_task", LOG_STORE_DUMP_TASK_STACK_SIZE, NULL, configMAX_PRIORITIES - 3, NULL);
 #endif
+    xTaskCreate(adt_wear_monitor_task, "adt_monitor", ADT_MONITOR_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, NULL);
     vTaskDelete(NULL);
 }
 

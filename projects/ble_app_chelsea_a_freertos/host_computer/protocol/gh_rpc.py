@@ -491,13 +491,14 @@ def _encode_varint(val: int) -> bytes:
 # GH RPC 参数类型头 (TypeHeader) — 与 gh_package.c 一致
 #   bit 0-1: pack_type (1=UNSIGNED, 2=SIGNED)
 #   bit 2:   is_array
-#   bit 3-5: width (2^width bytes, u32=2→4B, u16=1→2B, u8=0→1B)
+#   bit 3-5: width (2^width bytes, u32=5→4B, u16=4→2B, u8=3→1B)
 #   bit 6:   end (1=last param)
 #   bit 7:   split
-_TH_U32_FIRST = 0x11  # <u32> first:  pack_type=1,w=2(4B),end=0 → 00_010_0_01
-_TH_U32_LAST  = 0x51  # <u32> last:   pack_type=1,w=2(4B),end=1 → 01_010_0_01
-_TH_U8_FIRST  = 0x01  # <u8>  first:  pack_type=1,w=0(1B),end=0 → 00_000_0_01
-_TH_U8_LAST   = 0x41  # <u8>  last:   pack_type=1,w=0(1B),end=1 → 01_000_0_01
+# width = log2(bits), 例如 u32=32位 → 2^5=32 → width=5
+_TH_U32_FIRST = 0x29  # <u32> first:  pack_type=1,w=5(32bit),end=0 → 0_0_101_0_01
+_TH_U32_LAST  = 0x69  # <u32> last:   pack_type=1,w=5(32bit),end=1 → 0_1_101_0_01
+_TH_U8_FIRST  = 0x19  # <u8>  first:  pack_type=1,w=3(8bit),end=0  → 0_0_011_0_01
+_TH_U8_LAST   = 0x59  # <u8>  last:   pack_type=1,w=3(8bit),end=1  → 0_1_011_0_01
 
 
 def _encode_param_u32(val: int, last: bool = False) -> bytes:
@@ -552,8 +553,9 @@ def _build_rpc_frame(key: str, params: bytes) -> bytes:
     crc = sum(body) & 0xFF
 
     # 完整帧
+    # data->length = body size (不含 CRC, C 端 toFrameData 如此计算)
     frame = bytearray(FRAME_HEADER)
-    frame_len = len(body) + 1  # +1 for crc
+    frame_len = len(body)  # 不含 CRC
     frame.append(frame_len)
     frame.extend(body)
     frame.append(crc)
@@ -634,10 +636,13 @@ def unwrap_g_key_payload(payload: bytes) -> Optional[bytes]:
     #                  0x1D = end=0 | pack_type=1 | is_array=1 | width=3
     #                  0xDD = end=1 | pack_type=3 | is_array=1 | width=3 (少见)
     if payload[0] in (0x5D, 0x1D, 0xDD):
-        length = payload[1]
-        if 2 + length > len(payload):
+        declared_len = payload[1]
+        available = len(payload) - 2
+        if available <= 0:
             return None
-        return payload[2:2 + length]
+        # 固件有时声明的长度比实际多 1B, 取最小值
+        data_len = min(declared_len, available)
+        return payload[2:2 + data_len]
 
     # 非标准 TypeHeader → 无法解析
     return None

@@ -48,6 +48,7 @@
 #include "osal_event.h"
 #include "osal_priority_queue.h"
 #include "app_log.h"
+#include "ble_log.h"
 
 #if GH_USER_LOG_EN
 #define DEBUG_LOG(...)                      GH_LOG_LVL_DEBUG(__VA_ARGS__)
@@ -157,6 +158,16 @@ void gh_protocol_data_recevice(uint8_t *p_rx_buffer, uint8_t rx_len)
     {
         ERROR_LOG("Invalid buffer or length");
         return;
+    }
+
+    /* DEBUG: log received command bytes (single line) */
+    {   char hx[140]; int p = 0;
+        p += sprintf(hx + p, "[RX%02d]", rx_len);
+        for (uint8_t i = 0; i < rx_len && i < 32 && p < 135; i++)
+            p += sprintf(hx + p, "%02X", p_rx_buffer[i]);
+        if (rx_len > 32) { hx[p++] = '.'; hx[p++] = '.'; }
+        hx[p] = 0;
+        ble_printf("%s\n", hx);
     }
 
     osal_event_t *event = osal_event_create(GH_EVENT_TYPE_DATA_RECEIVE, OSAL_EVENT_PRIORITY_HIGH, p_rx_buffer, rx_len);

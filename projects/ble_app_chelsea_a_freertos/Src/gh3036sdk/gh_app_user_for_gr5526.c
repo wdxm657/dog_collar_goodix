@@ -93,6 +93,7 @@ extern bool is_connect(void);
  *****************************************************************************************
  */
 
+volatile uint32_t g_adt_wear_event = 0;  /* ADT 佩戴事件: 0=无, 1=戴上, 2=摘下 */
 
 /*
  * LOCAL FUNCTION DEFINITIONS
@@ -337,7 +338,7 @@ uint32_t gh_demo_data_publish(gh_func_frame_t *p_frame)
 {
 #if (1 == GH_PROTOCOL_EN)
     if (is_connect()) {
-        ble_printf("gh_protocol_process");
+        // ble_printf("gh_protocol_process");
         gh_protocol_process(p_frame);
     }
 #endif
@@ -357,6 +358,13 @@ uint32_t gh_demo_data_publish(gh_func_frame_t *p_frame)
     {
         case GH_FUNC_FIX_IDX_ADT:
         {
+            /* 自动佩戴检测: 更新全局事件变量, 供 main.c 监控线程使用 */
+            if (p_frame->p_algo_res != NULL) {
+                gh_algo_adt_result_t *p_adt_res = (gh_algo_adt_result_t *)p_frame->p_algo_res;
+                if (p_adt_res->wear_evt == 1 || p_adt_res->wear_evt == 2) {
+                    g_adt_wear_event = p_adt_res->wear_evt;
+                }
+            }
 //           if (p_frame->p_algo_res != NULL) {
 //               gh_algo_adt_result_t *p_adt_res = (gh_algo_adt_result_t *)p_frame->p_algo_res;
 //               GH_LOG_LVL_DEBUG("%lld,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\r\n",

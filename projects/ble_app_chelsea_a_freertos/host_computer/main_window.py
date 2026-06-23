@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QComboBox, QLabel, QTextEdit, QPlainTextEdit,
     QGroupBox, QGridLayout,
-    QCheckBox, QLineEdit, QSplitter, QFrame,
+    QCheckBox, QSplitter, QFrame,
     QStatusBar,
 )
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPalette
@@ -28,7 +28,6 @@ from ble_manager import BleManager
 from protocol.gh_rpc import (
     parse_rpc_frame, parse_data_frame, unwrap_g_key_payload,
     FuncId,
-    build_sw_function_cmd, build_get_version_cmd, build_set_work_mode_cmd,
 )
 
 # ======================================================================
@@ -243,27 +242,6 @@ class MainWindow(QMainWindow):
                 border-color: #e21f49;
             }
             QPushButton#btn_disconnect:hover { background-color: #e21f49; }
-            QPushButton#btn_cmd {
-                background-color: #8839ef;
-                border-color: #a04ef0;
-                min-height: 28px;
-                font-size: 12px;
-            }
-            QPushButton#btn_cmd:hover { background-color: #a04ef0; }
-            QPushButton#btn_stop {
-                background-color: #d20f39;
-                border-color: #e21f49;
-                min-height: 28px;
-                font-size: 12px;
-            }
-            QPushButton#btn_stop:hover { background-color: #e21f49; }
-            QPushButton#btn_version {
-                background-color: #04a5e5;
-                border-color: #15b5f5;
-                min-height: 28px;
-                font-size: 12px;
-            }
-            QPushButton#btn_version:hover { background-color: #15b5f5; }
             QComboBox {
                 background-color: #313244;
                 color: #cdd6f4;
@@ -429,75 +407,14 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(4, 0, 0, 0)
         right_layout.setSpacing(6)
 
-        cmd_group = QGroupBox("⌨ 命令")
-        cmd_layout = QVBoxLayout(cmd_group)
-        cmd_layout.setSpacing(8)
-
-        # 功能按钮
-        btn_grid = QGridLayout()
-        btn_grid.setSpacing(6)
-
-        self.btn_hr_hrv = QPushButton("▶ HR+HRV")
-        self.btn_hr_hrv.setObjectName("btn_cmd")
-        self.btn_hr_hrv.clicked.connect(lambda: self._send_sw_command(0x000A, 0))  # HR(0x0002)|HRV(0x0008)
-        self.btn_hr_hrv.setEnabled(False)
-        btn_grid.addWidget(self.btn_hr_hrv, 0, 0)
-
-        self.btn_spo2 = QPushButton("▶ SpO₂")
-        self.btn_spo2.setObjectName("btn_cmd")
-        self.btn_spo2.clicked.connect(lambda: self._send_sw_command(0x0004, 0))  # SpO2
-        self.btn_spo2.setEnabled(False)
-        btn_grid.addWidget(self.btn_spo2, 0, 1)
-
-        self.btn_adt = QPushButton("▶ ADT")
-        self.btn_adt.setObjectName("btn_cmd")
-        self.btn_adt.clicked.connect(lambda: self._send_sw_command(0x0001, 0))
-        self.btn_adt.setEnabled(False)
-        btn_grid.addWidget(self.btn_adt, 0, 2)
-
-        self.btn_stop = QPushButton("■ 停止")
-        self.btn_stop.setObjectName("btn_stop")
-        self.btn_stop.clicked.connect(lambda: self._send_sw_command(0xFFFFFFFF, 1))
-        self.btn_stop.setEnabled(False)
-        btn_grid.addWidget(self.btn_stop, 1, 0)
-
-        self.btn_version = QPushButton("ℹ 版本")
-        self.btn_version.setObjectName("btn_version")
-        self.btn_version.clicked.connect(lambda: self._send_command_async(build_get_version_cmd(0x01)))
-        self.btn_version.setEnabled(False)
-        btn_grid.addWidget(self.btn_version, 1, 1)
-
-        self.mode_label = QLabel("模式: 在线")
-        self.mode_label.setStyleSheet("color: #a6adc8; font-size: 12px;")
-        btn_grid.addWidget(self.mode_label, 1, 2)
-
-        cmd_layout.addLayout(btn_grid)
-
-        # 自定义命令
-        custom_row = QHBoxLayout()
-        self.custom_cmd_input = QLineEdit()
-        self.custom_cmd_input.setPlaceholderText(
-            "GH3X_SwFunctionCmd 0x0006 0  # 启动 HR+HRV"
-        )
-        self.custom_cmd_input.returnPressed.connect(self._on_custom_cmd)
-        custom_row.addWidget(self.custom_cmd_input, 1)
-
-        self.btn_send_custom = QPushButton("发送")
-        self.btn_send_custom.setObjectName("btn_cmd")
-        self.btn_send_custom.clicked.connect(self._on_custom_cmd)
-        self.btn_send_custom.setEnabled(False)
-        custom_row.addWidget(self.btn_send_custom)
-        cmd_layout.addLayout(custom_row)
-
-        # 提示文字
-        hint = QLabel("💡 提示: 设备按 SW1=心率, SW2=血氧, SW3=测试, ADT=自动模式")
-        hint.setStyleSheet("color: #585b70; font-size: 11px; padding: 4px 0;")
-        hint.setWordWrap(True)
-        cmd_layout.addWidget(hint)
-
-        cmd_layout.addStretch()
-
-        right_layout.addWidget(cmd_group)
+        # 右侧提示信息
+        info_group = QGroupBox("ℹ 设备信息")
+        info_layout = QVBoxLayout(info_group)
+        self.mode_label = QLabel("模式: 在线 (ADT 自动控制 HR+HRV)")
+        self.mode_label.setStyleSheet("color: #a6adc8; font-size: 12px; padding: 8px;")
+        info_layout.addWidget(self.mode_label)
+        info_layout.addStretch()
+        right_layout.addWidget(info_group)
 
         splitter.addWidget(right_widget)
         splitter.setSizes([600, 400])
@@ -620,12 +537,6 @@ class MainWindow(QMainWindow):
         self.btn_disconnect.setEnabled(connected)
         self.btn_scan.setEnabled(not connected)
         self.device_combo.setEnabled(not connected)
-        self.btn_hr_hrv.setEnabled(connected)
-        self.btn_spo2.setEnabled(connected)
-        self.btn_adt.setEnabled(connected)
-        self.btn_stop.setEnabled(connected)
-        self.btn_version.setEnabled(connected)
-        self.btn_send_custom.setEnabled(connected)
 
         if connected:
             self.conn_status_label.setText("🟢 已连接")
@@ -644,60 +555,7 @@ class MainWindow(QMainWindow):
             pass  # 连接状态正常
 
     # ==================================================================
-    # ==================================================================
-    # 命令发送
-    # ==================================================================
-    def _send_sw_command(self, mode: int, ctrl: int):
-        """发送功能开关命令"""
-        cmd = build_sw_function_cmd(mode, ctrl)
-        names = {0x000A: "HR+HRV", 0x0004: "SpO₂", 0x0001: "ADT", 0xFFFFFFFF: "全部"}
-        action = "▶ 启动" if ctrl == 0 else "■ 停止"
-        name = names.get(mode, f"0x{mode:04X}")
-        self._log_host(f"{action} {name}")
-        self.async_worker.run_coro(self._send_cmd_async(cmd, name))
-
-    def _send_command_async(self, cmd: bytes):
-        """发送自定义命令帧"""
-        self.async_worker.run_coro(self._send_cmd_async(cmd, "自定义"))
-
-    async def _send_cmd_async(self, cmd: bytes, label: str = ""):
-        """异步发送命令到设备"""
-        ok = await self.ble.send_command(cmd)
-        if ok:
-            self._log_host(f"命令发送成功: {label} ({len(cmd)}B)")
-        else:
-            self._log_host(f"命令发送失败: {label}")
-
-    def _on_custom_cmd(self):
-        """处理自定义命令输入"""
-        text = self.custom_cmd_input.text().strip()
-        if not text:
-            return
-
-        # 去除注释
-        if "#" in text:
-            text = text.split("#")[0].strip()
-
-        parts = text.split()
-        if not parts:
-            return
-
-        try:
-            cmd_name = parts[0]
-            args = [int(x, 0) for x in parts[1:]]
-
-            if cmd_name == "GH3X_SwFunctionCmd" and len(args) >= 2:
-                cmd = build_sw_function_cmd(args[0], args[1])
-                self._log_host(f"自定义: {cmd_name}(0x{args[0]:X}, {args[1]})")
-                self.async_worker.run_coro(self._send_cmd_async(cmd, cmd_name))
-            elif cmd_name == "GH3X_GetVersion" and len(args) >= 1:
-                cmd = build_get_version_cmd(args[0])
-                self._log_host(f"自定义: {cmd_name}(0x{args[0]:02X})")
-                self.async_worker.run_coro(self._send_cmd_async(cmd, cmd_name))
-            else:
-                self._log_host(f"未知命令或参数错误: {text}")
-        except (ValueError, IndexError) as e:
-            self._log_host(f"命令解析错误: {e}")
+    # (命令发送已移除: ADT 自动控制 HR+HRV)
 
     # ==================================================================
     # BLE 数据回调 (在 asyncio 线程中调用)
