@@ -50,6 +50,7 @@
 #include "gh_hal_io_config_for_gr5526.h"
 
 #include "app_thread.h"
+#include "ble_log.h"
 
 #if GH_USER_LOG_EN
 #define DEBUG_LOG(...)                      GH_LOG_LVL_DEBUG(__VA_ARGS__)
@@ -184,7 +185,7 @@ uint32_t gh_hal_delay_us(uint16_t us)
 
 int gh_hal_log_user(char *str)
 {
-    printf("%s\r\n", str);
+    ble_printf("%s\r\n", str);
     return 0;
 }
 

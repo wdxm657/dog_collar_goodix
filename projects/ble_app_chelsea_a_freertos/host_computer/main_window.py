@@ -7,6 +7,7 @@
 
 import sys
 import asyncio
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -26,9 +27,12 @@ from bleak.backends.device import BLEDevice
 
 from ble_manager import BleManager
 from protocol.gh_rpc import (
-    parse_rpc_frame, parse_data_frame, unwrap_g_key_payload,
+    parse_rpc_frame, parse_data_frame,
+    unwrap_g_key_payload,
     FuncId,
 )
+from imu_widget import ImuWidget
+from imu_data_logger import ImuDataLogger
 
 # ======================================================================
 # 异步事件循环线程
@@ -129,8 +133,10 @@ class MainWindow(QMainWindow):
     update_spo2_signal = pyqtSignal(object)
     update_adt_signal = pyqtSignal(object)
     update_nadt_signal = pyqtSignal(object)
+    update_imu_signal = pyqtSignal(object)  # (ax, ay, az)
     append_rpc_log_signal = pyqtSignal(str, str)
     append_device_log_signal = pyqtSignal(str)
+    append_imu_log_signal = pyqtSignal(str)
     append_host_log_signal = pyqtSignal(str)
     scan_complete_signal = pyqtSignal(object)
     connection_changed_signal = pyqtSignal(bool)
@@ -162,11 +168,17 @@ class MainWindow(QMainWindow):
         self.update_spo2_signal.connect(self._update_spo2_ui)
         self.update_adt_signal.connect(self._update_adt_ui)
         self.update_nadt_signal.connect(self._update_nadt_ui)
+        self.update_imu_signal.connect(self._update_imu_ui)
         self.append_rpc_log_signal.connect(self._append_rpc_log_ui)
         self.append_device_log_signal.connect(self._append_device_log_ui)
+        self.append_imu_log_signal.connect(self._append_imu_log_ui)
         self.append_host_log_signal.connect(self._append_host_log_ui)
         self.scan_complete_signal.connect(self._on_scan_complete)
         self.connection_changed_signal.connect(self._on_connection_changed_ui)
+
+        # IMU 文件日志 (从 [IMU] ble_printf 行写入)
+        # self._imu_file_logger = ImuDataLogger()
+        # self._imu_file_logger.start()
 
         # 扫描结果缓存
         self._scanned_devices = []
@@ -401,20 +413,22 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(left_widget)
 
-        # --- 右侧: 命令面板 ---
+        # --- 右侧: IMU 姿态显示 ---
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(4, 0, 0, 0)
         right_layout.setSpacing(6)
 
-        # 右侧提示信息
-        info_group = QGroupBox("ℹ 设备信息")
-        info_layout = QVBoxLayout(info_group)
-        self.mode_label = QLabel("模式: 在线 (ADT 自动控制 HR+HRV)")
-        self.mode_label.setStyleSheet("color: #a6adc8; font-size: 12px; padding: 8px;")
-        info_layout.addWidget(self.mode_label)
-        info_layout.addStretch()
-        right_layout.addWidget(info_group)
+        # IMU 姿态指示器
+        self.imu_widget = ImuWidget()
+        right_layout.addWidget(self.imu_widget, 1)
+
+        # 设备信息 (精简)
+        info_label = QLabel("🔄 在线模式 · ADT 自动控制 HR+HRV")
+        info_label.setStyleSheet("color: #a6adc8; font-size: 11px; padding: 4px 8px;"
+                                 "background-color: #181825; border: 1px solid #313244;"
+                                 "border-radius: 4px;")
+        right_layout.addWidget(info_label)
 
         splitter.addWidget(right_widget)
         splitter.setSizes([600, 400])
@@ -541,13 +555,15 @@ class MainWindow(QMainWindow):
         if connected:
             self.conn_status_label.setText("🟢 已连接")
             self.conn_status_label.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 13px;")
-            self.status_bar.showMessage("已连接 - 可通过命令或设备按键启动监测")
+            self.status_bar.showMessage("已连接 - 可通过设备按键启动监测")
             self._log_host("连接成功! ✓")
 
         else:
             self.conn_status_label.setText("🔴 未连接")
             self.conn_status_label.setStyleSheet("color: #f38ba8; font-weight: bold; font-size: 13px;")
             self.status_bar.showMessage("已断开连接")
+            # 断开时重置 IMU 显示
+            self.imu_widget.reset()
 
     def _check_connection(self):
         """定期检查连接状态"""
@@ -612,10 +628,17 @@ class MainWindow(QMainWindow):
                     elif func_id in (FuncId.GNADT, FuncId.IRNADT):
                         self.update_nadt_signal.emit(algo)
 
-                    log = f"[{func_name}] frame={fid}"
-                    if algo:
-                        log += " " + str(algo)
-                    self.append_rpc_log_signal.emit(log, func_name or "?")
+                    # ---- RPC 日志 ----
+                    has_gs_only = (
+                        df.get("gs_data") is not None
+                        and not algo
+                        and func_id is None
+                    )
+                    if not has_gs_only:
+                        log = f"[{func_name}] frame={fid}"
+                        if algo:
+                            log += " " + str(algo)
+                        self.append_rpc_log_signal.emit(log, func_name or "?")
                 else:
                     msg = f"[GH RPC] 数据帧解析失败 ({len(raw_bytes)} bytes)"
                     if self.debug_raw_check.isChecked():
@@ -639,18 +662,47 @@ class MainWindow(QMainWindow):
                 f"[hex] {len(data)} bytes: {data[:48].hex()}", "raw"
             )
 
+    @staticmethod
+    def _is_imu_log(text: str) -> bool:
+        """检测日志是否为 IMU 数据行 (来自 app_thread_imu.c 的 ble_printf)"""
+        return text.startswith("[IMU]")
+
+    @staticmethod
+    def _parse_imu_line(text: str):
+        """解析 '[IMU] ts=123 ax=-456 ay=789 az=-123' → (ax, ay, az, ts)"""
+        m = re.search(r'ts=(\d+)\s+ax=(-?\d+)\s+ay=(-?\d+)\s+az=(-?\d+)', text)
+        if m:
+            return (float(m.group(2)), float(m.group(3)), float(m.group(4)), int(m.group(1)))
+        return None
+
     def _on_log_data(self, data: bytes):
-        """HEALTH LOG TX 文本日志回调 (ble_printf)"""
+        """HEALTH LOG TX 文本日志回调 (ble_printf)
+
+        [IMU] 行: 解析数据驱动 3D 姿态 + CSV 日志
+        其他行: 显示到设备日志页面
+        """
         if data:
             try:
                 text = data.decode('ascii', errors='replace').strip()
                 if text:
-                    self.append_device_log_signal.emit(text)
+                    if self._is_imu_log(text):
+                        # 解析 IMU 数据 → 驱动 3D 立方体
+                        parsed = self._parse_imu_line(text)
+                        if parsed:
+                            ax, ay, az, ts = parsed
+                            # 逐帧发送到 3D 显示 (作为单元素列表)
+                            self.update_imu_signal.emit([(ax, ay, az, ts)])
+                            # 写入 CSV 文件日志
+                            # self._imu_file_logger.write(ts, ax, ay, az)
+                        # 文本也显示到 IMU 日志
+                        self.append_imu_log_signal.emit(text)
+                    else:
+                        self.append_device_log_signal.emit(text)
             except Exception:
                 pass
 
     def _on_lms_data(self, data: bytes):
-        """LMS 日志数据回调"""
+        """LMS 日志数据回调 (IMU 只走 LOG TX, LMS 不做处理避免重复)"""
         if data:
             try:
                 text = data.decode('ascii', errors='replace').strip()
@@ -738,6 +790,14 @@ class MainWindow(QMainWindow):
         else:
             self.wear_label.setStyleSheet("color: #a6adc8; font-size: 13px;")
 
+    def _update_imu_ui(self, samples: list):
+        """更新 IMU 姿态显示 (批量采样)"""
+        self.imu_widget.update_imu_batch(samples)
+
+    def _append_imu_log_ui(self, msg: str):
+        """追加 IMU 日志 (从设备日志过滤后重定向)"""
+        self.imu_widget.append_log(msg)
+
     def _append_rpc_log_ui(self, msg: str, tag: str = ""):
         """追加 RPC 消息日志"""
         ts = datetime.now().strftime("%H:%M:%S")
@@ -785,6 +845,9 @@ class MainWindow(QMainWindow):
                 future.result(timeout=3.0)
             except Exception:
                 pass
+
+        # 关闭 IMU 文件日志
+        self._imu_file_logger.stop()
 
         # 然后停止事件循环和线程
         self.async_worker.stop()

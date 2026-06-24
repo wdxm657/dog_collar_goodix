@@ -325,6 +325,73 @@ def parse_data_frame(payload: bytes) -> Optional[dict]:
     return result_accum
 
 
+def parse_individual_frames(payload: bytes) -> list:
+    """
+    逐帧解析 GH RPC "G" 键载荷，返回每帧独立数据（不累积到同一个 dict）。
+
+    处理差分编码: 首帧 gs_data + timestamp 为绝对值，
+    后续帧为差值 — 逐帧重建绝对值。
+
+    Returns:
+        list of dict, 每帧包含:
+            - "gs_data": [ax, ay, az] (绝对加速度, 已累积)
+            - "timestamp": int (毫秒, 已累积)
+            - "frame_id": int
+            - "function_id": int (可能缺失)
+    """
+    if not payload:
+        return []
+
+    frames = []
+    running_gs = None   # 累积中的绝对 gs_data
+    running_ts = None   # 累积中的绝对 timestamp (也是差分!)
+    pos = 0
+
+    while pos < len(payload):
+        frame_raw = {}
+        try:
+            new_pos = _decode_single_data_frame(payload, pos, frame_raw)
+        except (IndexError, ValueError):
+            break
+        if new_pos == pos:
+            break
+        pos = new_pos
+
+        # ---- 累积 gs_data (差分→绝对) ----
+        if "gs_data" in frame_raw:
+            gs = list(frame_raw["gs_data"])
+            if running_gs is None:
+                running_gs = gs
+            else:
+                for i, v in enumerate(gs):
+                    if i < len(running_gs):
+                        running_gs[i] += v
+                    else:
+                        running_gs.append(v)
+
+        # ---- 累积 timestamp (也是差分编码!) ----
+        if "timestamp" in frame_raw:
+            ts = frame_raw["timestamp"]
+            if running_ts is None:
+                running_ts = ts
+            else:
+                running_ts += ts
+
+        # ---- 构建这一帧的输出 ----
+        entry = {}
+        if running_gs is not None:
+            entry["gs_data"] = list(running_gs)
+        if running_ts is not None:
+            entry["timestamp"] = running_ts
+        for key in ("frame_id", "function_id"):
+            if key in frame_raw:
+                entry[key] = frame_raw[key]
+
+        frames.append(entry)
+
+    return frames
+
+
 def _decode_algo_results(func_id: int, data: list) -> dict:
     """根据功能 ID 解析算法结果"""
     results = {}

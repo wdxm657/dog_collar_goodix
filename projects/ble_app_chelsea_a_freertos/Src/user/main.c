@@ -185,7 +185,7 @@ static void app_rtc_evt_handler(app_rtc_evt_t *p_evt)
     if (p_evt->type == APP_RTC_EVT_TICK_ALARM)
     {
         app_mqueue_send_event(MQ_EVENT_RTC_TICK, OSAL_NO_WAIT);
-//        APP_LOG_INFO("timestamp: %d", bsp_timestamp_get());
+       ble_printf("timestamp: %lld", bsp_timestamp_get() / 1000);
     }
 }
 
